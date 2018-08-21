@@ -53,6 +53,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Maps.uniqueIndex;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.hadoop.hive.serde.serdeConstants.LINE_DELIM;
 
 public class HivePageSourceProvider
         implements ConnectorPageSourceProvider
@@ -93,7 +94,7 @@ public class HivePageSourceProvider
         Optional<ConnectorPageSource> pageSource = createHivePageSource(
                 cursorProviders,
                 pageSourceFactories,
-                hdfsEnvironment.getConfiguration(new HdfsContext(session, hiveSplit.getDatabase(), hiveSplit.getTable()), path),
+                hdfsEnvironment.getConfiguration(new HdfsContext(session, hiveSplit.getDatabase(), hiveSplit.getTable(), hiveSplit.getSchema().getProperty(LINE_DELIM)), path),
                 session,
                 path,
                 hiveSplit.getBucketNumber(),

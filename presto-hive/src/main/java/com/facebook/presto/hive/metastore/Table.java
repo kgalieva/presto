@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static com.facebook.presto.hive.HiveTableProperties.LINE_DELIMITER_PROPERTY;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
@@ -135,6 +136,11 @@ public class Table
     public Optional<String> getViewExpandedText()
     {
         return viewExpandedText;
+    }
+
+    public String getLineDelimiter()
+    {
+        return storage.getSerdeParameters().get(LINE_DELIMITER_PROPERTY);
     }
 
     @Override

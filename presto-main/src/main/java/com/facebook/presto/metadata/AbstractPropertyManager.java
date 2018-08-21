@@ -87,7 +87,7 @@ abstract class AbstractPropertyManager
         for (Map.Entry<String, Expression> sqlProperty : sqlPropertyValues.entrySet()) {
             String propertyName = sqlProperty.getKey().toLowerCase(ENGLISH);
             PropertyMetadata<?> property = supportedProperties.get(propertyName);
-            if (property == null) {
+            if (property == null && !propertyName.startsWith("serde.")) {
                 throw new PrestoException(propertyError,
                         format("Catalog '%s' does not support %s property '%s'",
                                 catalog,

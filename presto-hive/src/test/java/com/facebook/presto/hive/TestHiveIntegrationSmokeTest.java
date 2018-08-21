@@ -47,6 +47,7 @@ import org.intellij.lang.annotations.Language;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -3004,6 +3005,129 @@ public class TestHiveIntegrationSmokeTest
                 "      partitioned_by=ARRAY['dummy'])";
 
         assertQueryFails(createSql, "Bucketing/Partitioning columns not supported when Avro schema url is set");
+    }
+
+    @Test
+    public void testCreateTableWithDelimiter()
+    {
+        @Language("SQL") String createTableSql = format("" +
+                        "CREATE TABLE %s.%s.test_table_with_delimiter (\n" +
+                        "   name varchar\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   format = 'TEXTFILE',\n" +
+                        "   \"serde.line.delim\" = ';',\n" +
+                        "   \"serde.field.delim\" = ','\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get());
+        assertUpdate(createTableSql);
+        MaterializedResult actual = computeActual("SHOW CREATE TABLE test_table_with_delimiter");
+        assertEquals(actual.getOnlyValue(), createTableSql);
+        assertUpdate("DROP TABLE test_table_with_delimiter");
+    }
+
+    @Test
+    public void testExternalCreateTableWithDelimiter()
+            throws IOException
+    {
+        File tempDir = createTempDir();
+        File dataFile = new File(tempDir, "test.txt");
+        Files.asCharSink(dataFile, UTF_8).write("1,a,one;2,b,two;3,c,three");
+
+        @Language("SQL") String createTableSql = format("" +
+                        "CREATE TABLE %s.%s.test_external_table_with_delimiter (\n" +
+                        "   id bigint,\n" +
+                        "   name varchar,\n" +
+                        "   value varchar\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   external_location = '%s',\n" +
+                        "   format = 'TEXTFILE',\n" +
+                        "   \"serde.line.delim\" = ';',\n" +
+                        "   \"serde.field.delim\" = ','\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get(),
+                new Path(tempDir.toURI().toASCIIString()).toString());
+
+        assertUpdate(createTableSql);
+        MaterializedResult actual = computeActual("SHOW CREATE TABLE test_external_table_with_delimiter");
+        assertEquals(actual.getOnlyValue(), createTableSql);
+
+        actual = computeActual("SELECT id, name, value FROM test_external_table_with_delimiter");
+        MaterializedResult expected = resultBuilder(getSession(), canonicalizeType(createUnboundedVarcharType()), canonicalizeType(createUnboundedVarcharType()), canonicalizeType(createUnboundedVarcharType()))
+                .row(1L, "a", "one")
+                .row(2L, "b", "two")
+                .row(3L, "c", "three")
+                .build();
+
+        assertEqualsIgnoreOrder(actual.getMaterializedRows(), expected.getMaterializedRows());
+
+        assertUpdate("DROP TABLE test_external_table_with_delimiter");
+
+        // file should still exist after drop
+        assertFile(dataFile);
+
+        deleteRecursively(tempDir.toPath(), ALLOW_INSECURE);
+    }
+
+    @Test
+    public void testExternalCreateTableWithEscapedDelimiter()
+            throws IOException
+    {
+        File tempDir = createTempDir();
+        File dataFile = new File(tempDir, "test.txt");
+        Files.asCharSink(dataFile, UTF_8).write("1,\"a,aa\",\\N,one;2,\"b,bb\",null,two;3,\"c,cc\",,three");
+
+        @Language("SQL") String createTableSql = format("" +
+                        "CREATE TABLE %s.%s.test_external_table_with_delimiter (\n" +
+                        "   id bigint,\n" +
+                        "   name varchar,\n" +
+                        "   value varchar\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   external_location = '%s',\n" +
+                        "   format = 'TEXTFILE',\n" +
+                        "   line_delimiter = ';',\n" +
+                        "   serde.field.delim = ',',\n" +
+                        "   serde.escape.delim = '\\',\n" +
+                        "   serde.colelction.delim = '|',\n" +
+                        "   serde.mapkey.delim = ':',\n" +
+                        "   serde.serialization.null.format = ''\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get(),
+                new Path(tempDir.toURI().toASCIIString()).toString());
+
+        assertUpdate(createTableSql);
+        MaterializedResult actual = computeActual("SHOW CREATE TABLE test_external_table_with_delimiter");
+        assertEquals(actual.getOnlyValue(), createTableSql);
+
+        actual = computeActual("SELECT id, name, value FROM test_external_table_with_delimiter");
+        MaterializedResult expected = resultBuilder(getSession(), canonicalizeType(createUnboundedVarcharType()), canonicalizeType(createUnboundedVarcharType()), canonicalizeType(createUnboundedVarcharType()))
+                .row(1L, "a,aa", "\\N", "one")
+                .row(2L, "b,bb", "null", "two")
+                .row(3L, "c,cc", null, "three")
+                .build();
+
+        assertEqualsIgnoreOrder(actual.getMaterializedRows(), expected.getMaterializedRows());
+
+        assertUpdate("DROP TABLE test_external_table_with_delimiter");
+
+        // file should still exist after drop
+        assertFile(dataFile);
+
+        deleteRecursively(tempDir.toPath(), ALLOW_INSECURE);
+    }
+
+    @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "Field delimiter is only allowed for \\[RCTEXT, SEQUENCEFILE, TEXTFILE\\] format")
+    public void testCreateNonTextTableWithDelimiter()
+    {
+        assertUpdate("" +
+                "CREATE TABLE test_create_non_text_table_with_delimiter\n" +
+                "(grape bigint, apple varchar, orange bigint, pear varchar)\n" +
+                "WITH (field_delimiter = ',')");
     }
 
     private Session getParallelWriteSession()

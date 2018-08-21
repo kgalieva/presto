@@ -92,6 +92,7 @@ public class HdfsEnvironment
         private final Optional<String> queryId;
         private final Optional<String> schemaName;
         private final Optional<String> tableName;
+        private final Optional<String> textfileRecordDelimiter;
 
         public HdfsContext(Identity identity)
         {
@@ -100,6 +101,7 @@ public class HdfsEnvironment
             this.queryId = Optional.empty();
             this.schemaName = Optional.empty();
             this.tableName = Optional.empty();
+            this.textfileRecordDelimiter = Optional.empty();
         }
 
         public HdfsContext(ConnectorSession session, String schemaName)
@@ -111,9 +113,15 @@ public class HdfsEnvironment
             this.queryId = Optional.of(session.getQueryId());
             this.schemaName = Optional.of(schemaName);
             this.tableName = Optional.empty();
+            this.textfileRecordDelimiter = Optional.empty();
         }
 
         public HdfsContext(ConnectorSession session, String schemaName, String tableName)
+        {
+            this(session, schemaName, tableName, null);
+        }
+
+        public HdfsContext(ConnectorSession session, String schemaName, String tableName, String lineDelim)
         {
             requireNonNull(session, "session is null");
             requireNonNull(schemaName, "schemaName is null");
@@ -123,6 +131,7 @@ public class HdfsEnvironment
             this.queryId = Optional.of(session.getQueryId());
             this.schemaName = Optional.of(schemaName);
             this.tableName = Optional.of(tableName);
+            this.textfileRecordDelimiter = Optional.ofNullable(lineDelim);
         }
 
         public Identity getIdentity()
@@ -148,6 +157,11 @@ public class HdfsEnvironment
         public Optional<String> getTableName()
         {
             return tableName;
+        }
+
+        public Optional<String> getTextfileRecordDelimiter()
+        {
+            return textfileRecordDelimiter;
         }
 
         @Override

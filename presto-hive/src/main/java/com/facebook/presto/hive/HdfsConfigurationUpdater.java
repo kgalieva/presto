@@ -64,6 +64,7 @@ public class HdfsConfigurationUpdater
     private final int fileSystemMaxCacheSize;
     private final S3ConfigurationUpdater s3ConfigurationUpdater;
     private final boolean isHdfsWireEncryptionEnabled;
+    private final String textRecordDelimiter;
     private int textMaxLineLength;
 
     @VisibleForTesting
@@ -89,6 +90,7 @@ public class HdfsConfigurationUpdater
         this.compressionCodec = config.getHiveCompressionCodec();
         this.fileSystemMaxCacheSize = config.getFileSystemMaxCacheSize();
         this.isHdfsWireEncryptionEnabled = config.isHdfsWireEncryptionEnabled();
+        this.textRecordDelimiter = config.getTextRecordDelimiter();
         this.textMaxLineLength = toIntExact(config.getTextMaxLineLength().toBytes());
 
         this.s3ConfigurationUpdater = requireNonNull(s3ConfigurationUpdater, "s3ConfigurationUpdater is null");
@@ -97,6 +99,9 @@ public class HdfsConfigurationUpdater
     private static Configuration readConfiguration(List<String> resourcePaths)
     {
         Configuration result = new Configuration(false);
+        if (resourcePaths == null) {
+            return result;
+        }
 
         for (String resourcePath : resourcePaths) {
             Configuration resourceProperties = new Configuration(false);
@@ -143,6 +148,10 @@ public class HdfsConfigurationUpdater
         config.setInt(LineRecordReader.MAX_LINE_LENGTH, textMaxLineLength);
 
         configureCompression(config, compressionCodec);
+        
+        if (textRecordDelimiter != null) {
+            config.set("textinputformat.record.delimiter", textRecordDelimiter);
+        }
 
         s3ConfigurationUpdater.updateConfiguration(config);
     }

@@ -54,6 +54,10 @@ public class HiveHdfsConfiguration
     public Configuration getConfiguration(HdfsContext context, URI uri)
     {
         // use the same configuration for everything
-        return hadoopConfiguration.get();
+        Configuration configuration = hadoopConfiguration.get();
+        if (context.getTextfileRecordDelimiter().isPresent()) {
+            configuration.set("textinputformat.record.delimiter", context.getTextfileRecordDelimiter().get());
+        }
+        return configuration;
     }
 }

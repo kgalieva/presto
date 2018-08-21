@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableList;
 import javax.inject.Inject;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,6 +39,7 @@ import static com.facebook.presto.spi.type.VarcharType.createUnboundedVarcharTyp
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
+import static org.apache.commons.lang3.StringEscapeUtils.unescapeJava;
 
 public class HiveTableProperties
 {
@@ -49,7 +51,10 @@ public class HiveTableProperties
     public static final String SORTED_BY_PROPERTY = "sorted_by";
     public static final String ORC_BLOOM_FILTER_COLUMNS = "orc_bloom_filter_columns";
     public static final String ORC_BLOOM_FILTER_FPP = "orc_bloom_filter_fpp";
+    public static final String LINE_DELIMITER_PROPERTY = "line_delimiter";
     public static final String AVRO_SCHEMA_URL = "avro_schema_url";
+
+    public static final String DEFAULT_LINE_DELIMITER = "\n";
 
     private final List<PropertyMetadata<?>> tableProperties;
 
@@ -126,6 +131,7 @@ public class HiveTableProperties
                         config.getOrcDefaultBloomFilterFpp(),
                         false),
                 integerProperty(BUCKET_COUNT_PROPERTY, "Number of buckets", 0, false),
+                stringProperty(LINE_DELIMITER_PROPERTY, "Line delimiter", DEFAULT_LINE_DELIMITER, false),
                 stringProperty(AVRO_SCHEMA_URL, "URI pointing to Avro schema for the table", null, false));
     }
 
@@ -216,5 +222,18 @@ public class HiveTableProperties
     private static String sortingColumnToString(SortingColumn column)
     {
         return column.getColumnName() + ((column.getOrder() == DESCENDING) ? " DESC" : "");
+    }
+
+    public static Map<String, String> getSerdeProperties(Map<String, Object> tableProperties)
+    {
+        Map<String, String> serdeProperties = new HashMap<>();
+        for (Map.Entry<String, Object> tableProperty : tableProperties.entrySet()) {
+            if (tableProperty.getKey().startsWith("serde.")) {
+                String key = tableProperty.getKey().substring("serde.".length());
+                String value = unescapeJava((String) tableProperty.getValue());
+                serdeProperties.put(key, value);
+            }
+        }
+        return serdeProperties;
     }
 }

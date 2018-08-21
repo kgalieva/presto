@@ -139,6 +139,7 @@ public class HiveClientConfig
     private int partitionStatisticsSampleSize = 100;
     private boolean ignoreCorruptedStatistics;
     private boolean collectColumnStatisticsOnWrite;
+    private String textRecordDelimiter;
 
     public int getMaxInitialSplits()
     {
@@ -896,6 +897,18 @@ public class HiveClientConfig
     {
         this.useParquetColumnNames = useParquetColumnNames;
         return this;
+    }
+
+    public String getTextRecordDelimiter()
+    {
+        return textRecordDelimiter;
+    }
+
+    @Config("hive.textinputformat-record-delimiter")
+    @ConfigDescription("Custom line delimiter for RCTEXT, TEXTFILE and SEQUENCEFILE")
+    public void setTextRecordDelimiter(String textRecordDelimiter)
+    {
+        this.textRecordDelimiter = textRecordDelimiter;
     }
 
     public enum HiveMetastoreAuthenticationType
